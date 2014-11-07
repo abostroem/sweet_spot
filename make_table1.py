@@ -38,6 +38,7 @@ def build_table1_row(filename, source_tbdata, hdr, row_num):
 	else:
 		irow = [filename,
 				source_tbdata['id'][row_num],
+				hdr['mjd-obs'],
 				source_tbdata['coord'][row_num][0],
 				source_tbdata['coord'][row_num][1],
 				source_tbdata['centroid_sdss'][row_num][0],
@@ -59,15 +60,15 @@ def get_image_header(ifile):
 def make_table_of_all_objects(sn_name):
 	'''
 	Combine information from each image into a table of the form
-	im#      obj#      ra	dec	x	y	det#      counts sigma_counts SNR	filter zeropt
+	im#      obj#   mjd_obs   ra	dec	x	y	det#      counts sigma_counts SNR	filter zeropt
 	'''
 	table_flist = get_table_filenames(sn_name)
 	for ifile in table_flist:
 		with fits.open(ifile) as ofile:
 			source_tbdata = ofile[1].data
 			hdr = get_image_header(ifile)
-			all_objects_table = Table(names = ['filename', 'ID', 'ra', 'dec', 'x', 'y', 'counts', 'error', 'snr', 'filter'],
-				dtype = ['S20', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', 'S1'])
+			all_objects_table = Table(names = ['filename', 'ID', 'mjd-obs','ra', 'dec', 'x', 'y', 'counts', 'error', 'snr', 'filter'],
+				dtype = ['S20', '<i8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', 'S1'])
 			for row_num, source_row in enumerate(source_tbdata):
 				irow = build_table1_row(ifile.split('/')[-2], source_tbdata, hdr, row_num)
 				if irow:
