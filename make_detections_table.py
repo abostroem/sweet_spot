@@ -75,12 +75,12 @@ def make_table_of_all_objects(sn_name):
 	det# + im# =
 	'''
 	table_flist = get_table_filenames(sn_name)
+	all_objects_table = Table(names = ['filename', 'det', 'mjd-obs','ra', 'dec', 'x', 'y', 'counts', 'error', 'snr', 'filter', 'zeropnt'],
+	dtype = ['S20', '<i8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', 'S1', '<f8'])
 	for ifile in table_flist:
 		with fits.open(ifile) as ofile:
 			source_tbdata = ofile[1].data
 			hdr = get_image_header(ifile)
-			all_objects_table = Table(names = ['filename', 'det', 'mjd-obs','ra', 'dec', 'x', 'y', 'counts', 'error', 'snr', 'filter', 'zeropnt'],
-				dtype = ['S20', '<i8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', 'S1', '<f8'])
 			for row_num, source_row in enumerate(source_tbdata):
 				irow = build_table1_row(ifile.split('/')[-2], source_tbdata, hdr, row_num)
 				if irow:
