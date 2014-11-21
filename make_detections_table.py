@@ -8,7 +8,8 @@ import pdb
 
 global REPO_PATH
 
-
+#Detections table
+#Objects table
 def get_repo_path():
 	repo_path = os.getcwd()
 	return repo_path
@@ -19,12 +20,21 @@ def get_table_filenames(sn_name):
 	'''
 	Get list of tables of sources found in each file
 	'''
-	flist = glob.glob(os.path.join(REPO_PATH,
+	flist_H = glob.glob(os.path.join(REPO_PATH,
 						'DM',
 						'{}'.format(sn_name),
 						'{}_A_H*'.format(sn_name),
 						'{}_A_H*'.format(sn_name),
 						'src.fits'))
+
+	flist_J = glob.glob(os.path.join(REPO_PATH,
+						'DM',
+						'{}'.format(sn_name),
+						'{}_A_J*'.format(sn_name),
+						'{}_A_J*'.format(sn_name),
+						'src.fits'))
+	flist = flist_H + flist_J
+
 	return flist
 
 def build_table1_row(filename, source_tbdata, hdr, row_num):
@@ -46,7 +56,7 @@ def build_table1_row(filename, source_tbdata, hdr, row_num):
 				source_tbdata['flux_psf'][row_num],
 				source_tbdata['flux_psf_err'][row_num],
 				source_tbdata['flux_psf'][row_num]/source_tbdata['flux_psf_err'][row_num],
-				hdr['filter1']]
+				hdr['filter1'], hdr['zeropnt']]
 		return irow
 
 def get_image_header(ifile):
@@ -61,14 +71,16 @@ def make_table_of_all_objects(sn_name):
 	'''
 	Combine information from each image into a table of the form
 	im#      obj#   mjd_obs   ra	dec	x	y	det#      counts sigma_counts SNR	filter zeropt
+	ID = linear numbers
+	det# + im# =
 	'''
 	table_flist = get_table_filenames(sn_name)
 	for ifile in table_flist:
 		with fits.open(ifile) as ofile:
 			source_tbdata = ofile[1].data
 			hdr = get_image_header(ifile)
-			all_objects_table = Table(names = ['filename', 'ID', 'mjd-obs','ra', 'dec', 'x', 'y', 'counts', 'error', 'snr', 'filter'],
-				dtype = ['S20', '<i8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', 'S1'])
+			all_objects_table = Table(names = ['filename', 'det', 'mjd-obs','ra', 'dec', 'x', 'y', 'counts', 'error', 'snr', 'filter', 'zeropnt'],
+				dtype = ['S20', '<i8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', '<f8', 'S1', '<f8'])
 			for row_num, source_row in enumerate(source_tbdata):
 				irow = build_table1_row(ifile.split('/')[-2], source_tbdata, hdr, row_num)
 				if irow:
