@@ -87,15 +87,19 @@ def make_table_of_all_objects(sn_name):
 					all_objects_table.add_row(irow)
 	return all_objects_table
 
-def write_table(table, filename = 'table1.fits'):
+def write_table(sn_name, table, filename = '_detections_table.fits'):
 	'''
 	Remove table file if it exists and write a new one
 	table - astropy table object
 	filename - name of file to be written
 	'''
-	os.remove(filename)
+	filename = sn_name+filename
+	try:
+		os.remove(filename)
+	except OSError:
+		pass
 	table.write(filename, format = 'fits')
 
 if __name__ == "__main__":
 	all_objects_table = make_table_of_all_objects('SN2013fn')
-	write_table(all_objects_table)
+	write_table('SN2013fn', all_objects_table)
