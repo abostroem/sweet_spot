@@ -3,6 +3,7 @@ import glob
 from astropy.table import Table
 from astropy.io import fits
 import numpy as np
+from scipy.stats import mode
 
 import pdb
 
@@ -35,10 +36,10 @@ def match_objects(sorted_tbdata, object_threshold = 0.1):
 	sorted_tbdata.add_column(Table.Column(data = sorted_tbdata['ra']*ra_to_arcsec, name = 'ra_arcsec'))
 	sorted_tbdata.add_column(Table.Column(data = sorted_tbdata['dec']*dec_to_arcsec, name = 'dec_arcsec'))
 
-	object_id = np.int_(tbdata['ra']*0) #This array will hold the object ID number, initialize with all 0s
+	object_id = np.int_(tbdata['ra']*0)-1 #This array will hold the object ID number, initialize with all 0s
 	object_number = 0
 	for indx, object_ra in enumerate(sorted_tbdata['ra_arcsec']):
-		if object_id[indx] == 0: #object has not previously been associated with another object
+		if object_id[indx] == -1: #object has not previously been associated with another object
 			object_number += 1
 			object_id[indx] = object_number
 			#Better to search item by item or using array np.where?
@@ -51,10 +52,45 @@ def match_objects(sorted_tbdata, object_threshold = 0.1):
 	sorted_tbdata.add_column(Table.Column(data = object_id, name = 'id'))
 	return sorted_tbdata
 
-def make_unique_object_table(sorted_table):
-	object_table = Table(names = ['id', 'date1', 'counts1', 'counts_err1', 'filter', 'zeropt'],
-		dtype = ['<i8', '<f8', '<f8', '<f8', 's1', '<f8'])
-	pass
+
+
+def build_object_table(sorted_tbdata):
+	id_of_most_observed_obj, max_array_size = mode(sorted_tbdata['id'])
+	max_array_size = int(max_array_size[0]) #mode returns a single element array, make this a number
+
+
+	object_table = Table(names = ['id', 'date', 'counts', 'error', 'filter', 'zeropnt', 'snr'],
+				dtype = ['i8', '{},f8'.format(max_array_size),'{},f8'.format(max_array_size),
+						'{},f8'.format(max_array_size), '{},S3'.format(max_array_size),
+						'{},f8'.format(max_array_size),'{},f8'.format(max_array_size)])
+
+	#It looks like set automatically sorts
+	for unique_obj in set(sorted_tbdata['id']):
+		dates = np.ones((max_array_size,))*999E8  #This number should be larger than any realistic date
+		counts = np.ones((max_array_size,))*-999
+		error = np.ones((max_array_size,))*-999
+		filter = ['N/A']*max_array_size
+		zeropt = np.ones((max_array_size,))*-999
+		snr = np.ones((max_array_size,))*-999
+		object_detection_indx = np.where(sorted_tbdata['id'] == unique_obj)[0]
+		for det_num, detection in enumerate(object_detection_indx):
+			dates[det_num] = sorted_tbdata['mjd-obs'][detection]
+			counts[det_num] = sorted_tbdata['counts'][detection]
+			error[det_num] = sorted_tbdata['error'][detection]
+			filter[det_num] = sorted_tbdata['filter'][detection]
+			zeropt[det_num] = sorted_tbdata['zeropnt'][detection]
+			snr[det_num] = sorted_tbdata['snr'][detection]
+
+		filter = np.array(filter)
+		#Put in time order
+		time_order_indx = np.argsort(dates)
+		dates[dates == 999E8] = -999
+		#Convert back to lists to build row
+		irow = [unique_obj, dates[time_order_indx], counts[time_order_indx],
+				error[time_order_indx], filter[time_order_indx],
+				zeropt[time_order_indx], snr[time_order_indx]]
+		object_table.add_row(irow)
+	return object_table
 
 def write_table(sn_name, table, filename = '_object_table.fits'):
 	'''
@@ -75,3 +111,5 @@ if __name__ == "__main__":
 	sorted_table = sort_tbdata_by_ra(tbdata)
 	sorted_tbdata = match_objects(sorted_table)
 	write_table('SN2013fn', sorted_tbdata, filename = 'object_intermediate_table.fits')
+	object_table = build_object_table(sorted_tbdata)
+	write_table('SN2013fn', object_table, filename = 'object_table.fits')
